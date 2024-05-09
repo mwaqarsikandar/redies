@@ -1,5 +1,5 @@
 const express = require('express');
-const fetch = require('node-fetch');
+const axios = require('axios');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -8,9 +8,8 @@ app.use(express.static('public'));
 
 async function fetchRedditData() {
     try {
-        const response = await fetch('https://www.reddit.com/r/all/comments/.json?limit=100');
-        const data = await response.json();
-        return data;
+        const response = await axios.get('https://www.reddit.com/r/all/comments/.json?limit=100');
+        return response.data;
     } catch (error) {
         console.error('Error fetching Reddit data:', error);
         return null;
