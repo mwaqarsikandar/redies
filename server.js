@@ -26,10 +26,10 @@ emptyDataFiles();
 
 async function fetchRedditData() {
     try {
-        const cookieJar = new CookieJar();
         const response = await axios.get('https://www.reddit.com/r/all/comments/.json?limit=100', {
-            jar: cookieJar, // Use cookie jar with request
-            withCredentials: true, // Send credentials with request
+            headers: {
+                'User-Agent': 'MyRedditApp/1.0 (contact@example.com)'
+            }
         });
         return response.data;
     } catch (error) {
@@ -37,6 +37,7 @@ async function fetchRedditData() {
         return null;
     }
 }
+
 
 // Function to extract relevant data from Reddit response
 function extractRedditData(data) {
