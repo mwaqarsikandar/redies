@@ -1,5 +1,7 @@
 const express = require('express');
 const axios = require('axios');
+const tough = require('tough-cookie');
+const { CookieJar } = tough;
 const fs = require('fs').promises;
 
 const app = express();
@@ -7,6 +9,7 @@ const PORT = process.env.PORT || 3000;
 
 let redditData = [];
 let filteredData = [];
+let currentPage = 1; // Global variable to track current page number
 
 async function emptyDataFiles() {
     try {
@@ -23,7 +26,11 @@ emptyDataFiles();
 
 async function fetchRedditData() {
     try {
-        const response = await axios.get('https://www.reddit.com/r/all/comments/.json?limit=100');
+        const cookieJar = new CookieJar();
+        const response = await axios.get('https://www.reddit.com/r/all/comments/.json?limit=100', {
+            jar: cookieJar, // Use cookie jar with request
+            withCredentials: true, // Send credentials with request
+        });
         return response.data;
     } catch (error) {
         console.error('Error fetching Reddit data:', error);
@@ -31,6 +38,7 @@ async function fetchRedditData() {
     }
 }
 
+// Function to extract relevant data from Reddit response
 function extractRedditData(data) {
     const extractedData = [];
     data.data.children.forEach(child => {
@@ -42,6 +50,7 @@ function extractRedditData(data) {
     return extractedData;
 }
 
+// Function to filter Reddit data based on keywords
 function filterRedditData(data, keywords) {
     return data.filter(item => {
         const title = item.title.toLowerCase();
@@ -63,7 +72,6 @@ async function saveDataToFile(data, filename, page) {
     }
 }
 
-
 async function loadDataFromFile(filename) {
     try {
         const data = await fs.readFile(filename);
@@ -74,77 +82,21 @@ async function loadDataFromFile(filename) {
     }
 }
 
-app.get('/reddit-data', async (req, res) => {
-    try {
-        const page = req.query.page || 1;
-        const redditData = await loadDataFromFile('all_reddit_data.json');
-        const startIndex = (page - 1) * 100;
-        const endIndex = page * 100;
-        const paginatedData = redditData.slice(startIndex, endIndex);
-        res.json(paginatedData);
-    } catch (error) {
-        console.error('Error serving Reddit data:', error);
-        res.status(500).send('Internal Server Error');
-    }
-});
-
-app.get('/filtered-reddit-data', async (req, res) => {
-    try {
-        const page = req.query.page || 1;
-        const filteredData = await loadDataFromFile('filtered_reddit_data.json');
-        const startIndex = (page - 1) * 100;
-        const endIndex = page * 100;
-        const paginatedData = filteredData.slice(startIndex, endIndex);
-        res.json(paginatedData);
-    } catch (error) {
-        console.error('Error serving filtered Reddit data:', error);
-        res.status(500).send('Internal Server Error');
-    }
-});
-
-
-let currentPage = 1; // Global variable to track current page number
-
 async function updateRedditData() {
     try {
         const rawData = await fetchRedditData();
         redditData = extractRedditData(rawData);
         const keywords = ['Amazon','FBA','Private label','Query','Product Research','Product Hunting','Sourcing','1688','AliBaba','Launch','PPC','Ads','Advertising','Keywords','Online','Marketplace','Sales','Strategy','Branding','optimization','Campaign','Marketing','Inventory','Listing','Ranking','Reviews','Feedback','Competition','Trend','Demand','Niche','Research','Supplier','Shipping','Warehouse','Fulfillment','Quality','Revenue','Profit','Cost','Price','Deal','Discount','Promotion','Bundle','Coupon','Offer','Welcome','Click','Traffic','Conversion','Rate','CTR ','ROI','Budget','Bid','Campaign','Campaign','Keyword','Advertiser','CPM ','CPC','CTR ','Impression','Audience','Targeting','Segment','Demographic','Right','Remarketing','Advertorial','Native','Influencer','Social','Media','Content','Display','Video','Search','Engine','Optimization','Landing','Page','Conversion','Funnel','Lead','Generated','Acquisition','Customer','Service','Satisfaction','Loyalty','CRM ','Feedback','Review','Reputation','Trust','Authority','Secure','Payment','Checkout','Shipping','Return','Policy','Warranty','Long','Fraud','Protection','Authentication','SSL ','API ','Integration','Backend','Frontend','UX ','UI ','Design','Of','Technology','Platform','Software','Tool','App','Mobile','Website','Ecommerce','Marketplace','Retail','Online','Store','Shop','Seller','Buyer','Cart','Checkout','Payment','Gateway','Transaction','Account','Login','Registration','Dashboard','Analytics','Report','Metric','Data','Analysis','Insight','Trend','Forecast','Benchmark','Benchmarking','KPI ','Metric','Score','Measurement','Assessment','Evaluation','Comparison','Competitor','Benchmark','Warning','Alert','Notification','Tracking','Performance','Index','Rank','Position','Visibility','Organic','Paid','Sponsored','Algorithm','SERP ','SEO ','SEM ','SERM ','Keyword','Search','Query','P','Long-tail','Short-tail','Volume','Competition','Difficulty','Trend','Forecast','Analysis','Research','Tool','Software','Platform','Service','Agency','Expert','Consultant','Teacher','Special','Professional','Training','Course','Seminar','Workshop','Conference','Event','Webinar','Under','Blog','Article','Guide','Book','Resource','Tool','Calculator','Generator','Template','Example','Sample','Case','Study','Testimonial','Review','Rating','Feedback','Comment','Forum','Community','Group','Network','Association','Organization','Alliance','Collaborate','Partnership','Joint','Venture','Cooperation','Synergy','Integration','Merge','Acquisition','Merger','Expansion','Growth','Scale','Development','Innovation','Disruption','Transformation','Revolution','Evolution','Change','Trend','Future','Vision','Mission','Goal','Objective','Strategy','Plan','Roadmap','Initiative','Project','That','Action','Implementation','Execution','Result','Outcome','Achievement','Success','Failure','Lesson','Learning','Experience','Knowledge','Skill','Talent','Skilled','Capability','Competency','Qualification','Expertise','Specialization','Proficiency','Efficiency','Effectiveness','Performance','Improvement','Optimization','Enhancement','Innovation','Creativity','Adaptation','Resilience' ];
         filteredData = filterRedditData(redditData, keywords);
-        
+
         // Save all data with the current page number
-        await saveAllData(redditData, 'all_reddit_data.json', currentPage);
-        await saveAllData(filteredData, 'filtered_reddit_data.json', currentPage);
+        await saveDataToFile(redditData, 'all_reddit_data.json', currentPage);
+        await saveDataToFile(filteredData, 'filtered_reddit_data.json', currentPage);
         currentPage++;
     } catch (error) {
         console.error('Error updating Reddit data:', error);
     }
 }
-
-
-
-async function saveAllData(data, filename, page) {
-    try {
-        // Load existing data from file
-        const existingData = await loadDataFromFile(filename);
-
-        // Add page number to each item in the new data
-        const newDataWithPage = data.map(item => ({ ...item, page }));
-
-        // Concatenate existing data with new data
-        const combinedData = existingData.concat(newDataWithPage);
-
-        // Save combined data to file
-        await fs.writeFile(filename, JSON.stringify(combinedData));
-        console.log(`Data saved successfully for page ${page}.`);
-    } catch (error) {
-        console.error('Error saving data:', error);
-    }
-}
-
-
-
-
 
 // Update Reddit data every 5 minutes (300,000 milliseconds)
 setInterval(updateRedditData, 3000);
