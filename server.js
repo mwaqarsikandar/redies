@@ -28,7 +28,7 @@ async function fetchRedditData() {
     try {
         const response = await axios.get('https://www.reddit.com/r/all/comments/.json?limit=100', {
             headers: {
-                'User-Agent': 'MyRedditApp/1.0 (contact@example.com)'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.111 Safari/537.36'
             }
         });
         return response.data;
