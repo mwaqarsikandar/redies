@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reddit Subreddit Extractor</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #f5f5f5;
+        margin: 0;
+        padding: 0;
+    }
+
+    .container {
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 20px;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+    }
+
+    th, td {
+        padding: 8px;
+        text-align: left;
+    }
+
+    th {
+        background-color: #007bff;
+        color: #fff;
+    }
+
+    tr:nth-child(even) {
+        background-color: #f2f2f2;
+    }
+
+    tr:hover {
+        background-color: #ddd;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+    }
+
+    .pagination a {
+        color: #007bff;
+        text-decoration: none;
+        padding: 8px 12px;
+        margin: 0 4px;
+        border: 1px solid #007bff;
+        border-radius: 4px;
+    }
+
+    .pagination a:hover {
+        background-color: #007bff;
+        color: #fff;
+    }
+
+    .active {
+        background-color: #007bff;
+        color: #fff;
+    }
+</style>
+</head>
+<body>
+    <div class="container">
+        <h1>Reddit Subreddit Extractor</h1>
+
+        <h2>Filtered Reddit Data</h2>
+        <table id="filtered-reddit-table">
+            <thead>
+                <tr>
+                    <th>Subreddit</th>
+                    <th>Title</th>
+                    <th>Permalink</th>
+                </tr>
+            </thead>
+            <tbody id="filtered-reddit-data">
+                <!-- Filtered Reddit data will be dynamically inserted here -->
+            </tbody>
+        </table>
+
+        <div class="pagination" id="filtered-pagination">
+            <!-- Pagination links for filtered data will be dynamically inserted here -->
+        </div>
+
+        <h2>All Reddit Data</h2>
+        <table id="reddit-table">
+            <thead>
+                <tr>
+                    <th>Subreddit</th>
+                    <th>Title</th>
+                    <th>Permalink</th>
+                </tr>
+            </thead>
+            <tbody id="reddit-data">
+                <!-- Reddit data will be dynamically inserted here -->
+            </tbody>
+        </table>
+
+        <div class="pagination" id="reddit-pagination">
+            <!-- Pagination links for all Reddit data will be dynamically inserted here -->
+        </div>
+    </div>
+
+    <script>
+        async function fetchRedditData(page) {
+            try {
+                const response = await fetch(`/reddit-data?page=${page}&limit=30`);
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Error fetching Reddit data:', error);
+            }
+        }
+
+        async function fetchFilteredRedditData(page) {
+            try {
+                const response = await fetch(`/filtered-reddit-data?page=${page}&limit=30`);
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Error fetching filtered Reddit data:', error);
+            }
+        }
+
+        async function displayRedditData(page) {
+            const redditData = await fetchRedditData(page);
+            const tableBody = document.getElementById('reddit-data');
+            tableBody.innerHTML = ''; // Clear existing data
+
+            redditData.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.subreddit}</td>
+                    <td>${item.title}</td>
+                    <td><a href="https://www.reddit.com${item.permalink}" target="_blank">Link</a></td>
+                `;
+                tableBody.appendChild(row);
+            });
+
+            // Generate pagination links
+            const totalRedditPages = Math.ceil(redditData.length / 30);
+            generatePaginationLinks(totalRedditPages, page, 'reddit-pagination');
+        }
+
+        async function displayFilteredRedditData(page) {
+            const filteredRedditData = await fetchFilteredRedditData(page);
+            const tableBody = document.getElementById('filtered-reddit-data');
+            tableBody.innerHTML = ''; // Clear existing data
+
+            filteredRedditData.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.subreddit}</td>
+                    <td>${item.title}</td>
+                    <td><a href="https://www.reddit.com${item.permalink}" target="_blank">Link</a></td>
+                `;
+                tableBody.appendChild(row);
+            });
+
+            // Generate pagination links
+            const totalFilteredPages = Math.ceil(filteredRedditData.length / 30);
+            generatePaginationLinks(totalFilteredPages, page, 'filtered-pagination');
+        }
+
+        function generatePaginationLinks(totalPages, currentPage, containerId) {
+            const paginationContainer = document.getElementById(containerId);
+            paginationContainer.innerHTML = '';
+
+            // First page button
+            const firstPageLink = document.createElement('a');
+            firstPageLink.href = '#';
+            firstPageLink.textContent = 'First';
+            firstPageLink.addEventListener('click', () => {
+                if (containerId === 'reddit-pagination') {
+                    displayRedditData(1);
+                } else if (containerId === 'filtered-pagination') {
+                    displayFilteredRedditData(1);
+                }
+            });
+            paginationContainer.appendChild(firstPageLink);
+
+            // Previous page button
+            const prevPageLink = document.createElement('a');
+            prevPageLink.href = '#';
+            prevPageLink.textContent = 'Previous';
+            prevPageLink.addEventListener('click', () => {
+                const prevPage = currentPage > 1 ? currentPage - 1 : 1;
+                if (containerId === 'reddit-pagination') {
+                    displayRedditData(prevPage);
+                } else if (containerId === 'filtered-pagination') {
+                    displayFilteredRedditData(prevPage);
+                }
+            });
+            paginationContainer.appendChild(prevPageLink);
+
+            // Next page button
+            const nextPageLink = document.createElement('a');
+            nextPageLink.href = '#';
+            nextPageLink.textContent = 'Next';
+            nextPageLink.addEventListener('click', () => {
+                const nextPage = currentPage < totalPages ? currentPage + 1 : totalPages;
+                if (containerId === 'reddit-pagination') {
+                    displayRedditData(nextPage);
+                } else if (containerId === 'filtered-pagination') {
+                    displayFilteredRedditData(nextPage);
+                }
+            });
+            paginationContainer.appendChild(nextPageLink);
+
+            // Last page button
+            const lastPageLink = document.createElement('a');
+            lastPageLink.href = '#';
+            lastPageLink.textContent = 'Last';
+            lastPageLink.addEventListener('click', () => {
+                if (containerId === 'reddit-pagination') {
+                    displayRedditData(totalPages);
+                } else if (containerId === 'filtered-pagination') {
+                    displayFilteredRedditData(totalPages);
+                }
+            });
+            paginationContainer.appendChild(lastPageLink);
+        }
+
+        async function initializePage() {
+            // Display first page of Reddit data
+            await displayRedditData(1);
+
+            // Display first page of filtered Reddit data
+            await displayFilteredRedditData(1);
+        }
+
+        window.onload = initializePage;
+    </script>
+</body>
+</html>
